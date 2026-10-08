@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  /* PharmaHisab is a live dashboard — every API response must be fresh. */
+  cacheComponents: false,
   turbopack: {
     rules: {
       "*.css": {

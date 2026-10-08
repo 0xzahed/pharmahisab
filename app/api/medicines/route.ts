@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { addMedicine, deleteMedicine, listMedicines, updateMedicine } from "@/lib/store";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // fresh data on every request
 
 const num = (v: unknown, fallback = 0) => {
   const n = Number(v);
