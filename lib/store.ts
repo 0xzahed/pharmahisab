@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Medicine } from "@/models/Medicine";
+import { StockTxn } from "@/models/StockTxn";
 
 export interface MedicineDoc {
   id: string;
@@ -83,4 +84,64 @@ export async function deleteMedicine(id: string): Promise<boolean> {
     return !!r;
   }
   return mem.delete(id);
+}
+
+/** Adjust stock and record the movement. Throws on bad input or insufficient stock. */
+export async function adjustStock(
+  id: string,
+  qty: number,
+  kind: string,
+  note = "",
+): Promise<MedicineDoc> {
+  if (!id) throw new Error("Medicine id is required.");
+  if (!Number.isFinite(qty) || qty <= 0) throw new Error("Quantity must be a positive number.");
+  if (kind !== "in" && kind !== "out") throw new Error("kind must be in or out.");
+
+  if (await db()) {
+    const med = await Medicine.findById(id);
+    if (!med) throw new Error("Medicine not found.");
+    const next = (med.stock as number) + (kind === "in" ? qty : -qty);
+    if (next < 0) throw new Error(`Insufficient stock (have ${med.stock}).`);
+    med.stock = next;
+    await med.save();
+    await StockTxn.create({ medicineId: id, kind, qty, note }).catch(() => undefined);
+    return toDoc(med.toObject() as unknown as Raw);
+  }
+
+  const cur = mem.get(id);
+  if (!cur) throw new Error("Medicine not found.");
+  const next = cur.stock + (kind === "in" ? qty : -qty);
+  if (next < 0) throw new Error(`Insufficient stock (have ${cur.stock}).`);
+  const updated: MedicineDoc = { ...cur, stock: next, updatedAt: new Date().toISOString() };
+  mem.set(id, updated);
+  memTxns.push({ medicineId: id, kind, qty, note, at: new Date().toISOString() });
+  return updated;
+}
+
+export interface StockTxnDoc {
+  medicineId: string;
+  kind: string;
+  qty: number;
+  note: string;
+  at: string;
+}
+
+const memTxns: StockTxnDoc[] = [];
+
+export async function listStockTxns(medicineId?: string): Promise<StockTxnDoc[]> {
+  if (await db()) {
+    const q = medicineId ? { medicineId } : {};
+    const rows = await StockTxn.find(q).sort({ createdAt: -1 }).limit(100).lean().catch(() => []);
+    return (rows as unknown as { medicineId: string; kind: string; qty: number; note?: string; createdAt?: Date }[]).map(
+      (r) => ({
+        medicineId: r.medicineId,
+        kind: r.kind,
+        qty: r.qty,
+        note: String(r.note ?? ""),
+        at: String(r.createdAt ?? ""),
+      }),
+    );
+  }
+  const rows = medicineId ? memTxns.filter((t) => t.medicineId === medicineId) : memTxns;
+  return rows.slice(-100).reverse();
 }
