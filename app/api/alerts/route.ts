@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { listMedicines } from "@/lib/store";
 import { expiryStatus } from "@/lib/expiry";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const meds = await listMedicines();
   const lowStock = meds.filter((m) => m.stock <= m.minStock);

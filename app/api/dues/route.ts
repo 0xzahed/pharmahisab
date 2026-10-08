@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { addDueCustomer, listDueCustomers } from "@/lib/dues";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return NextResponse.json({ customers: await listDueCustomers() });
 }

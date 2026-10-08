@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { addMedicine, deleteMedicine, listMedicines, updateMedicine } from "@/lib/store";
 
+export const dynamic = "force-dynamic";
+
 const num = (v: unknown, fallback = 0) => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
